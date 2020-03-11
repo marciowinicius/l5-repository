@@ -56,6 +56,7 @@ class FiltroRequestCriteria implements CriteriaInterface
     private function setarValores(array $request)
     {
         $this->campoValor = $request[$this->campoPosicao];
+        $this->campoValor = $this->campoValor == 'null' ? null : $this->campoValor;
         $this->condicaoValor = $this->retornarCondicao($request[$this->condicaoPosicao], $this->campoPosicao);
         if ($this->condicaoValor == 'like' or $this->condicaoValor == 'ilike'){
             $this->valorValor = "%" . $request[$this->valorPosicao] . '%';
