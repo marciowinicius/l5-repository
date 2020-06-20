@@ -25,7 +25,7 @@ class FiltroRequestCriteria implements CriteriaInterface
 
         for ($i = 0; $i <= 100; $i++) {
             $this->campoPosicao = 'campo' . $i;
-            if (array_key_exists($this->campoPosicao, $request) and !empty($request[$this->campoPosicao])) {
+            if (array_key_exists($this->campoPosicao, $request) and isset($request[$this->campoPosicao])) {
                 $this->verificarCondicaoCampo($i, $request);
                 $this->verificarValorCampo($i, $request);
 
@@ -73,7 +73,7 @@ class FiltroRequestCriteria implements CriteriaInterface
     private function verificarCondicaoCampo(int $i, array $request)
     {
         $this->condicaoPosicao = 'condicao' . $i;
-        if (!array_key_exists($this->condicaoPosicao, $request) OR empty($request[$this->condicaoPosicao])) {
+        if (!array_key_exists($this->condicaoPosicao, $request) OR !isset($request[$this->condicaoPosicao])) {
             throw new CondicaoCampoNaoPassadaException($this->campoPosicao);
         }
     }
@@ -81,12 +81,12 @@ class FiltroRequestCriteria implements CriteriaInterface
     /**
      * @param int $i
      * @param array $request
-     * @throws CondicaoCampoNaoPassadaException
+     * @throws ValorCampoNaoPassadoException
      */
     private function verificarValorCampo(int $i, array $request)
     {
         $this->valorPosicao = 'valor' . $i;
-        if (!array_key_exists($this->valorPosicao, $request) OR empty($request[$this->valorPosicao])) {
+        if (!array_key_exists($this->valorPosicao, $request) OR !isset($request[$this->valorPosicao])) {
             throw new ValorCampoNaoPassadoException($this->campoPosicao);
         }
     }
@@ -104,7 +104,7 @@ class FiltroRequestCriteria implements CriteriaInterface
                 $condicao = "like";
                 break;
             case "não contendo":
-                $condicao = "not like ";
+                $condicao = "not like";
                 break;
             case "igual":
                 $condicao = "=";
