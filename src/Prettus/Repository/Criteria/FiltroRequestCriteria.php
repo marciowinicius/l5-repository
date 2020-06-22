@@ -12,6 +12,9 @@ use Prettus\Repository\Contracts\RepositoryInterface;
 
 class FiltroRequestCriteria implements CriteriaInterface
 {
+    const VALORES_BOOLEANOS_TRUE = ['Sim'];
+    const VALORES_BOOLEANOS_FALSE = ['Não'];
+
     private $campoValor;
     private $campoPosicao;
     private $condicaoValor;
@@ -58,10 +61,11 @@ class FiltroRequestCriteria implements CriteriaInterface
         $this->campoValor = $request[$this->campoPosicao];
         $this->campoValor = $this->campoValor == 'null' ? null : $this->campoValor;
         $this->condicaoValor = $this->retornarCondicao($request[$this->condicaoPosicao], $this->campoPosicao);
-        if ($this->condicaoValor == 'like' or $this->condicaoValor == 'ilike'){
-            $this->valorValor = "%" . $request[$this->valorPosicao] . '%';
+        $valor = $this->conferirTipoValor($request[$this->valorPosicao]);
+        if ($this->condicaoValor == 'like' or $this->condicaoValor == 'ilike') {
+            $this->valorValor = "%" . $valor . '%';
         } else {
-            $this->valorValor = $request[$this->valorPosicao];
+            $this->valorValor = $valor;
         }
     }
 
@@ -89,6 +93,31 @@ class FiltroRequestCriteria implements CriteriaInterface
         if (!array_key_exists($this->valorPosicao, $request) OR !isset($request[$this->valorPosicao])) {
             throw new ValorCampoNaoPassadoException($this->campoPosicao);
         }
+    }
+
+    private function conferirTipoValor($valor)
+    {
+        if (\DateTime::createFromFormat('d/m/Y', $valor) !== FALSE) {
+            return Carbon::createFromFormat('d/m/Y', $valor)->format('Y-m-d');
+        }
+        if (\DateTime::createFromFormat('d/m/Y H:i:s', $valor) !== FALSE) {
+            return Carbon::createFromFormat('d/m/Y H:i:s', $valor)->format('Y-m-d H:i:s');
+        }
+        if (in_array($valor, self::VALORES_BOOLEANOS_TRUE)) {
+            return true;
+        } elseif (in_array($valor, self::VALORES_BOOLEANOS_FALSE)) {
+            return false;
+        }
+        if ($this->checarValorDinheiro($valor)){
+            return (float)str_replace(',', '.', str_replace('.', '', $valor));
+        }
+
+        return $valor;
+    }
+
+    private function checarValorDinheiro($valor)
+    {
+        return preg_match("^(?:[1-9](?:[\d]{0,2}(?:\.[\d]{3})*|[\d]+)|0)(?:,[\d]{0,2})?^", $valor);
     }
 
     /**
