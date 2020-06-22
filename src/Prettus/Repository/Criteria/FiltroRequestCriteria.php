@@ -42,11 +42,25 @@ class FiltroRequestCriteria implements CriteriaInterface
                 }
 
                 if ($relation) {
-                    $model = $model->whereHas($relation, function ($query) {
-                        $query->where($this->campoValor, $this->condicaoValor, $this->valorValor);
-                    });
+                    if ((\DateTime::createFromFormat('Y-m-d', $this->valorValor) !== FALSE) and ($this->condicaoValor == '=')){
+                        $dateFrom = $this->valorValor . ' 00:00:00';
+                        $dateTo = $this->valorValor . ' 11:59:59';
+                        $model = $model->whereHas($relation, function ($query) use ($dateFrom, $dateTo){
+                            $query->whereBetween($this->campoValor, [$dateFrom, $dateTo]);
+                        });
+                    } else {
+                        $model = $model->whereHas($relation, function ($query) {
+                            $query->where($this->campoValor, $this->condicaoValor, $this->valorValor);
+                        });
+                    }
                 } else {
-                    $model = $model->where($this->campoValor, $this->condicaoValor, $this->valorValor);
+                    if ((\DateTime::createFromFormat('Y-m-d', $this->valorValor) !== FALSE) and ($this->condicaoValor == '=')){
+                        $dateFrom = $this->valorValor . ' 00:00:00';
+                        $dateTo = $this->valorValor . ' 11:59:59';
+                        $model = $model->whereBetween($this->campoValor, [$dateFrom, $dateTo]);
+                    } else {
+                        $model = $model->where($this->campoValor, $this->condicaoValor, $this->valorValor);
+                    }
                 }
             } else {
                 break;
