@@ -131,7 +131,9 @@ class FiltroRequestCriteria implements CriteriaInterface
 
     private function checarValorDinheiro($valor)
     {
-        return preg_match("^(?:[1-9](?:[\d]{0,2}(?:\.[\d]{3})*|[\d]+)|0)(?:,[\d]{0,2})?^", $valor);
+        $valorInvertido = strrev($valor);
+        $posicaoVirgula = strpos($valorInvertido, ',');
+        return ($posicaoVirgula and $posicaoVirgula == 2) and preg_match("^(?:[1-9](?:[\d]{0,2}(?:\.[\d]{3})*|[\d]+)|0)(?:,[\d]{0,2})?^", $valor);
     }
 
     /**
