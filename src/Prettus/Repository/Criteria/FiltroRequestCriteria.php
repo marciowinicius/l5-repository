@@ -2,6 +2,8 @@
 
 namespace Prettus\Repository\Criteria;
 
+use Datapage\DatapageSDK\Facades\DatapageSDK;
+use Datapage\DatapageSDK\Support\Enums\API;
 use Prettus\Repository\Exceptions\CondicaoCampoNaoPassadaException;
 use Prettus\Repository\Exceptions\CondicaoCampoNaoSuportadaException;
 use Prettus\Repository\Exceptions\ValorCampoNaoPassadoException;
@@ -14,6 +16,8 @@ class FiltroRequestCriteria implements CriteriaInterface
 {
     const VALORES_BOOLEANOS_TRUE = ['Sim'];
     const VALORES_BOOLEANOS_FALSE = ['Não'];
+
+    const VALORES_BUSCA_MS_BENS = ['bem.placa', 'bem.versao.nome', 'bem.versao.modelo.nome', 'bem.versao.modelo.marca.nome', 'bem.proprietario_local.nome', 'bem.proprietario_local.cnpj'];
 
     private $campoValor;
     private $campoPosicao;
@@ -34,32 +38,40 @@ class FiltroRequestCriteria implements CriteriaInterface
 
                 $this->setarValores($request);
 
-                $relation = null;
-                if (stripos($this->campoValor, '.')) {
-                    $explode = explode('.', $this->campoValor);
-                    $this->campoValor = array_pop($explode);
-                    $relation = implode('.', $explode);
-                }
-
-                if ($relation) {
-                    if ((\DateTime::createFromFormat('Y-m-d', $this->valorValor) !== FALSE) and ($this->condicaoValor == '=')){
-                        $dateFrom = $this->valorValor . ' 00:00:00';
-                        $dateTo = $this->valorValor . ' 11:59:59';
-                        $model = $model->whereHas($relation, function ($query) use ($dateFrom, $dateTo){
-                            $query->whereBetween($this->campoValor, [$dateFrom, $dateTo]);
-                        });
-                    } else {
-                        $model = $model->whereHas($relation, function ($query) {
-                            $query->where($this->campoValor, $this->condicaoValor, $this->valorValor);
-                        });
-                    }
+                if (in_array($this->campoValor, self::VALORES_BUSCA_MS_BENS)) {
+                    $automotorSDK = DatapageSDK::get(API::AUTOMOTOR);
+                    $this->retirarPrefixoEconferirPlacaEformatar();
+                    $this->valorValor = rawurlencode($this->valorValor);
+                    $bens = collect($automotorSDK->findAllBens("search=$this->campoValor:$this->valorValor&paginacao_ou_todos=todos")->data)->pluck('id')->toArray();
+                    $model = $model->whereIn('bem_id', $bens);
                 } else {
-                    if ((\DateTime::createFromFormat('Y-m-d', $this->valorValor) !== FALSE) and ($this->condicaoValor == '=')){
-                        $dateFrom = $this->valorValor . ' 00:00:00';
-                        $dateTo = $this->valorValor . ' 11:59:59';
-                        $model = $model->whereBetween($this->campoValor, [$dateFrom, $dateTo]);
+                    $relation = null;
+                    if (stripos($this->campoValor, '.')) {
+                        $explode = explode('.', $this->campoValor);
+                        $this->campoValor = array_pop($explode);
+                        $relation = implode('.', $explode);
+                    }
+
+                    if ($relation) {
+                        if ((\DateTime::createFromFormat('Y-m-d', $this->valorValor) !== FALSE) and ($this->condicaoValor == '=')) {
+                            $dateFrom = $this->valorValor . ' 00:00:00';
+                            $dateTo = $this->valorValor . ' 11:59:59';
+                            $model = $model->whereHas($relation, function ($query) use ($dateFrom, $dateTo) {
+                                $query->whereBetween($this->campoValor, [$dateFrom, $dateTo]);
+                            });
+                        } else {
+                            $model = $model->whereHas($relation, function ($query) {
+                                $query->where($this->campoValor, $this->condicaoValor, $this->valorValor);
+                            });
+                        }
                     } else {
-                        $model = $model->where($this->campoValor, $this->condicaoValor, $this->valorValor);
+                        if ((\DateTime::createFromFormat('Y-m-d', $this->valorValor) !== FALSE) and ($this->condicaoValor == '=')) {
+                            $dateFrom = $this->valorValor . ' 00:00:00';
+                            $dateTo = $this->valorValor . ' 11:59:59';
+                            $model = $model->whereBetween($this->campoValor, [$dateFrom, $dateTo]);
+                        } else {
+                            $model = $model->where($this->campoValor, $this->condicaoValor, $this->valorValor);
+                        }
                     }
                 }
             } else {
@@ -68,6 +80,17 @@ class FiltroRequestCriteria implements CriteriaInterface
         }
 
         return $model;
+    }
+
+    private function retirarPrefixoEconferirPlacaEformatar()
+    {
+        $this->campoValor = str_replace('bem.', '', $this->campoValor);
+        if ($this->campoValor == 'placa') {
+            $this->valorValor = strtoupper($this->valorValor);
+            if (strlen($this->valorValor) == 6 OR strlen($this->valorValor) == 7) {
+                $this->valorValor = strtoupper($this->formataPlacadeCarro(str_replace('-', '', $this->valorValor)));
+            }
+        }
     }
 
     private function setarValores(array $request)
@@ -118,11 +141,11 @@ class FiltroRequestCriteria implements CriteriaInterface
             return Carbon::createFromFormat('d/m/Y H:i:s', $valor)->format('Y-m-d H:i:s');
         }
         if (in_array($valor, self::VALORES_BOOLEANOS_TRUE)) {
-            return true;
+            return 1;
         } elseif (in_array($valor, self::VALORES_BOOLEANOS_FALSE)) {
-            return false;
+            return 0;
         }
-        if ($this->checarValorDinheiro($valor)){
+        if ($this->checarValorDinheiro($valor)) {
             return (float)str_replace(',', '.', str_replace('.', '', $valor));
         }
 
@@ -181,6 +204,15 @@ class FiltroRequestCriteria implements CriteriaInterface
         }
 
         return $condicao;
+    }
+
+    private function formataPlacadeCarro($placa)
+    {
+        $primeiraParte = substr($placa, 0, 3);
+        $segundaParte = substr($placa, 3);
+
+        $PLACA = $primeiraParte . "-" . $segundaParte;
+        return $PLACA;
     }
 
 }
