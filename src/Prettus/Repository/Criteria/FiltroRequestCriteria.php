@@ -42,7 +42,7 @@ class FiltroRequestCriteria implements CriteriaInterface
                     $automotorSDK = DatapageSDK::get(API::AUTOMOTOR);
                     $this->retirarPrefixoEconferirPlacaEformatar();
                     $this->valorValor = rawurlencode($this->valorValor);
-                    if (strpos($this->campoValor, 'proprietario_local')) {
+                    if ($this->campoValor == 'proprietario_local.nome' OR $this->campoValor == 'proprietario_local.cnpj') {
                         $bens = collect($automotorSDK->findAllBens("search=$this->campoValor:$this->valorValor&paginacao_ou_todos=todos")->data)->pluck('id')->toArray();
                     } else {
                         $bens = collect($automotorSDK->findAllBens("campo0=$this->campoValor&condicao0=$this->condicaoValor&valor0=$this->valorValor&paginacao_ou_todos=todos")->data)->pluck('id')->toArray();
