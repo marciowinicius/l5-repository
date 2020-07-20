@@ -25,6 +25,7 @@ class FiltroRequestCriteria implements CriteriaInterface
     private $condicaoPosicao;
     private $valorValor;
     private $valorPosicao;
+    
 
     public function apply($model, RepositoryInterface $repository)
     {
