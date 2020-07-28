@@ -142,11 +142,7 @@ class RequestCriteria implements CriteriaInterface
                                 //if we have an array we want to search multiple values for the same field
                                 if(is_array($value)){
                                     foreach ($value as $val){
-<<<<<<< HEAD
-                                        $query->orWhere($modelTableName.'.'.$field, $condition, $value);
-=======
                                         $query->orWhere($modelTableName.'.'.$field, $condition, $val);
->>>>>>> 1213d03f188c57c86e6a2714b1efd0a299931a4a
                                     }
                                 } else {
                                     $query->orWhere($modelTableName.'.'.$field, $condition, $value);
